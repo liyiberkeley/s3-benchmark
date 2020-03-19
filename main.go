@@ -6,10 +6,6 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/schollz/progressbar/v2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +13,11 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/schollz/progressbar/v2"
 )
 
 // represents the duration from making an S3 GetObject request to getting the first byte and last byte
@@ -50,7 +51,7 @@ type benchmark struct {
 
 // absolute limits
 const maxPayload = 18
-const maxThreads = 64
+const maxThreads = 128
 
 // default settings
 const defaultRegion = "us-west-2"
@@ -123,20 +124,20 @@ func main() {
 }
 
 func parseFlags() {
-	threadsMinArg := flag.Int("threads-min", 8, "The minimum number of threads to use when fetching objects from S3.")
-	threadsMaxArg := flag.Int("threads-max", 16, "The maximum number of threads to use when fetching objects from S3.")
+	threadsMinArg := flag.Int("threads-min", 1, "The minimum number of threads to use when fetching objects from S3.")
+	threadsMaxArg := flag.Int("threads-max", 128, "The maximum number of threads to use when fetching objects from S3.")
 	payloadsMinArg := flag.Int("payloads-min", 1, "The minimum object size to test, with 1 = 1 KB, and every increment is a double of the previous value.")
-	payloadsMaxArg := flag.Int("payloads-max", 10, "The maximum object size to test, with 1 = 1 KB, and every increment is a double of the previous value.")
+	payloadsMaxArg := flag.Int("payloads-max", 13, "The maximum object size to test, with 1 = 1 KB, and every increment is a double of the previous value.")
 	samplesArg := flag.Int("samples", 1000, "The number of samples to collect for each test of a single object size and thread count.")
-	bucketNameArg := flag.String("bucket-name", "", "Cleans up all the S3 artifacts used by the benchmarks.")
+	bucketNameArg := flag.String("bucket-name", "s3benchmark", "Cleans up all the S3 artifacts used by the benchmarks.")
 	regionArg := flag.String("region", "", "Sets the AWS region to use for the S3 bucket. Only applies if the bucket doesn't already exist.")
 	endpointArg := flag.String("endpoint", "", "Sets the S3 endpoint to use. Only applies to non-AWS, S3-compatible stores.")
 	fullArg := flag.Bool("full", false, "Runs the full exhaustive test, and overrides the threads and payload arguments.")
 	throttlingModeArg := flag.Bool("throttling-mode", false, "Runs a continuous test to find out when EC2 network throttling kicks in.")
 	cleanupArg := flag.Bool("cleanup", false, "Cleans all the objects uploaded to S3 for this test.")
-	csvResultsArg := flag.String("upload-csv", "", "Uploads the test results to S3 as a CSV file.")
+	csvResultsArg := flag.String("upload-csv", "s3benchmark", "Uploads the test results to S3 as a CSV file.")
 	createBucketArg := flag.Bool("create-bucket", true, "Create the bucket")
-	
+
 	// parse the arguments and set all the global variables accordingly
 	flag.Parse()
 
@@ -172,9 +173,9 @@ func parseFlags() {
 	if *fullArg {
 		// if running the full exhaustive test, the threads and payload arguments get overridden with these
 		threadsMin = 1
-		threadsMax = 48
+		threadsMax = 128
 		payloadsMin = 1  //  1 KB
-		payloadsMax = 16 // 32 MB
+		payloadsMax = 18 // 128 MB
 	}
 
 	if *throttlingModeArg {
@@ -227,7 +228,7 @@ func setup() {
 			},
 		})
 
-		// AWS S3 has this peculiar issue in which if you want to create bucket in us-east-1 region, you should NOT specify 
+		// AWS S3 has this peculiar issue in which if you want to create bucket in us-east-1 region, you should NOT specify
 		// any location constraint. https://github.com/boto/boto3/issues/125
 		if strings.ToLower(region) == "us-east-1" {
 			createBucketReq = s3Client.CreateBucketRequest(&s3.CreateBucketInput{
@@ -240,7 +241,7 @@ func setup() {
 		// if the error is because the bucket already exists, ignore the error
 		if err != nil && !strings.Contains(err.Error(), "BucketAlreadyOwnedByYou:") {
 			panic("Failed to create S3 bucket: " + err.Error())
-		}	
+		}
 	}
 
 	// an object size iterator that starts from 1 KB and doubles the size on every iteration
@@ -332,7 +333,7 @@ func runBenchmark() {
 		printHeader(payload)
 
 		// run a test per thread count and object size combination
-		for t := threadsMin; t <= threadsMax; t++ {
+		for t := threadsMin; t <= threadsMax; t = t * 2 {
 			// if throttling mode, loop forever
 			for n := 1; true; n++ {
 				csvRecords = execTest(t, payload, n, csvRecords)
