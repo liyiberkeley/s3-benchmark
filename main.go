@@ -124,19 +124,19 @@ func main() {
 }
 
 func parseFlags() {
-	threadsMinArg := flag.Int("threads-min", 1, "The minimum number of threads to use when fetching objects from S3.")
-	threadsMaxArg := flag.Int("threads-max", 128, "The maximum number of threads to use when fetching objects from S3.")
-	payloadsMinArg := flag.Int("payloads-min", 1, "The minimum object size to test, with 1 = 1 KB. Every increment doubles previous size.")
-	payloadsMaxArg := flag.Int("payloads-max", 13, "(2^(13-1)=4096) The maximum object size to test, with 1 = 1 KB. Every increment doubles previous size.")
-	samplesArg := flag.Int("samples", 1000, "The number of samples to collect for each test of a single object size and thread count.")
-	bucketNameArg := flag.String("bucket-name", "s3benchmark", "Cleans up all the S3 artifacts used by the benchmarks.")
+	threadsMinArg := flag.Int("threads-min", 1, "(1) The minimum number of threads to use when fetching objects from S3.")
+	threadsMaxArg := flag.Int("threads-max", 128, "(128) The maximum number of threads to use when fetching objects from S3.")
+	payloadsMinArg := flag.Int("payloads-min", 1, "(1) The minimum object size to test, with 1 = 1 KB. Every increment doubles previous size.")
+	payloadsMaxArg := flag.Int("payloads-max", 13, "(13: 2^(13-1)=4096) The maximum object size to test, with 1 = 1 KB. Every increment doubles previous size.")
+	samplesArg := flag.Int("samples", 1000, "(1000) The number of samples to collect for each test of a single object size and thread count.")
+	bucketNameArg := flag.String("bucket-name", "s3benchmark", "(s3benchmark) specify a bucket-name.")
 	regionArg := flag.String("region", "", "Sets the AWS region to use for the S3 bucket. Only applies if the bucket doesn't already exist.")
-	endpointArg := flag.String("endpoint", "", "Sets the S3 endpoint to use. Only applies to non-AWS, S3-compatible stores.")
-	fullArg := flag.Bool("full", false, "Runs the full exhaustive test, and overrides the threads and payload arguments.")
-	throttlingModeArg := flag.Bool("throttling-mode", false, "Runs a continuous test to find out when EC2 network throttling kicks in.")
-	cleanupArg := flag.Bool("cleanup", false, "Cleans all the objects uploaded to S3 for this test.")
-	csvResultsArg := flag.String("upload-csv", "s3benchmark", "Uploads the test results to S3 as a CSV file.")
-	createBucketArg := flag.Bool("create-bucket", false, "Create the bucket")
+	endpointArg := flag.String("endpoint", "", "(e.g. http://localhost:9000) Sets the S3 endpoint to use. Only applies to non-AWS, S3-compatible stores.")
+	fullArg := flag.Bool("full", false, "(false) Runs the full exhaustive test, and overrides the threads and payload arguments.")
+	throttlingModeArg := flag.Bool("throttling-mode", false, "(false) Runs a continuous test to find out when EC2 network throttling kicks in.")
+	cleanupArg := flag.Bool("cleanup", false, "(false) Cleans all the objects uploaded to S3 for this test.")
+	csvResultsArg := flag.String("upload-csv", "s3benchmark", "(s3benchmark) result/upload-csv  uploaded to S3 after the test.")
+	createBucketArg := flag.Bool("create-bucket", false, "(false) Option to create the bucket specified by the bucket-name")
 
 	// parse the arguments and set all the global variables accordingly
 	flag.Parse()
@@ -263,7 +263,7 @@ func setup() {
 		bar := progressbar.NewOptions(threadsMax-1, progressbar.OptionSetRenderBlankState(true))
 
 		// create an object for every thread, so that different threads don't download the same object
-		for t := 1; t <= threadsMax; t++ {
+		for t := 1; t <= threadsMax; t = t * 2 {
 			// increment the progress bar for each object
 			_ = bar.Add(1)
 
