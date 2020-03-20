@@ -374,7 +374,7 @@ func runBenchmark() {
 
 func execTest(threadCount int, payloadSize uint64, runNumber int, csvRecords [][]string) [][]string {
 	// this overrides the sample count on small hosts that can get overwhelmed by a large throughput
-	samples := getTargetSampleCount(threadCount, samples)
+	// samples := getTargetSampleCount(threadCount, samples)
 
 	// a channel to submit the test tasks
 	testTasks := make(chan int, threadCount)
@@ -701,9 +701,9 @@ func getTargetSampleCount(threads int, tasks int) int {
 	if instanceType == "" {
 		return minimumOf(50, tasks)
 	}
-	// if !strings.Contains(instanceType, "xlarge") && !strings.Contains(instanceType, "metal") {
-	// 	return minimumOf(50, tasks)
-	// }
+	if !strings.Contains(instanceType, "xlarge") && !strings.Contains(instanceType, "metal") {
+		return minimumOf(50, tasks)
+	}
 	if threads <= 4 {
 		return minimumOf(100, tasks)
 	}
