@@ -263,7 +263,7 @@ func setup() {
 		bar := progressbar.NewOptions(threadsMax-1, progressbar.OptionSetRenderBlankState(true))
 
 		// create an object for every thread, so that different threads don't download the same object
-		for t := 1; t <= threadsMax; t = t * 2 {
+		for t := 1; t <= threadsMax; t++ {
 			// increment the progress bar for each object
 			_ = bar.Add(1)
 
